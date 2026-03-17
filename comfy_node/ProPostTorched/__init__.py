@@ -3,6 +3,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import folder_paths
+from comfy_api.latest import ComfyExtension, io
 
 from .utils import processing as processing_utils
 from .utils import loading as loading_utils
@@ -77,47 +78,32 @@ def _apply_1d_lut(image: torch.Tensor, lut_t: torch.Tensor) -> torch.Tensor:
     return result.clamp(0.0, 1.0)
 
 
-class ProPostVignette:
+class ProPostVignette(io.ComfyNode):
     @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "image": ("IMAGE",),
-                "intensity": ("FLOAT", {
-                    "default": 1.0,
-                    "min": 0.0,
-                    "max": 10.0,
-                    "step": 0.01
-                }),
-                "center_x": ("FLOAT", {
-                    "default": 0.5,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.01
-                }),
-                "center_y": ("FLOAT", {
-                    "default": 0.5,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.01
-                }),
-            },
-        }
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="ProPostVignetteTorched",
+            display_name="ProPost Vignette (Torched)",
+            category="Pro Post/Camera Effects",
+            inputs=[
+                io.Image.Input("image"),
+                io.Float.Input("intensity", default=1.0, min=0.0, max=10.0, step=0.01),
+                io.Float.Input("center_x", default=0.5, min=0.0, max=1.0, step=0.01),
+                io.Float.Input("center_y", default=0.5, min=0.0, max=1.0, step=0.01),
+            ],
+            outputs=[
+                io.Image.Output("image"),
+            ],
+        )
 
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ()
-
-    FUNCTION = "vignette_image"
-
-    CATEGORY = "Pro Post/Camera Effects"
-
+    @classmethod
     @torch.inference_mode()
-    def vignette_image(self, image: torch.Tensor, intensity: float,
-                       center_x: float, center_y: float):
+    def execute(cls, image: torch.Tensor, intensity: float,
+                center_x: float, center_y: float) -> io.NodeOutput:
         if intensity == 0:
-            return (image,)
+            return io.NodeOutput(image)
 
-        B, H, W, _ = image.shape
+        _, H, W, _ = image.shape
         device = image.device
 
         x = torch.linspace(-1, 1, W, device=device) - (2 * center_x - 1)
@@ -135,83 +121,43 @@ class ProPostVignette:
         vignette = (1.0 - radius * opacity).clamp(0.0, 1.0)
         vignette = vignette.unsqueeze(0).unsqueeze(-1)
 
-        return ((image * vignette).clamp(0.0, 1.0),)
+        return io.NodeOutput((image * vignette).clamp(0.0, 1.0))
 
 
-class ProPostFilmGrain:
-    grain_types = ["Fine", "Fine Simple", "Coarse", "Coarser"]
+class ProPostFilmGrain(io.ComfyNode):
+    GRAIN_TYPES = ["Fine", "Fine Simple", "Coarse", "Coarser"]
 
     @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "image": ("IMAGE",),
-                "gray_scale": ("BOOLEAN", {
-                    "default": False
-                }),
-                "grain_type": (s.grain_types,),
-                "grain_sat": ("FLOAT", {
-                    "default": 0.5,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.01
-                }),
-                "grain_power": ("FLOAT", {
-                    "default": 0.7,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.01
-                }),
-                "shadows": ("FLOAT", {
-                    "default": 0.2,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.01
-                }),
-                "highs": ("FLOAT", {
-                    "default": 0.2,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.01
-                }),
-                "scale": ("FLOAT", {
-                    "default": 1.0,
-                    "min": 0.0,
-                    "max": 10.0,
-                    "step": 0.01
-                }),
-                "sharpen": ("INT", {
-                    "default": 0,
-                    "min": 0,
-                    "max": 10
-                }),
-                "src_gamma": ("FLOAT", {
-                    "default": 1.0,
-                    "min": 0.0,
-                    "max": 10.0,
-                    "step": 0.01
-                }),
-                "seed": ("INT", {
-                    "default": 1,
-                    "min": 1,
-                    "max": 1000
-                }),
-            },
-        }
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="ProPostFilmGrainTorched",
+            display_name="ProPost Film Grain (Torched)",
+            category="Pro Post/Camera Effects",
+            inputs=[
+                io.Image.Input("image"),
+                io.Boolean.Input("gray_scale", default=False),
+                io.Combo.Input("grain_type", options=cls.GRAIN_TYPES, default=cls.GRAIN_TYPES[0]),
+                io.Float.Input("grain_sat", default=0.5, min=0.0, max=1.0, step=0.01),
+                io.Float.Input("grain_power", default=0.7, min=0.0, max=1.0, step=0.01),
+                io.Float.Input("shadows", default=0.2, min=0.0, max=1.0, step=0.01),
+                io.Float.Input("highs", default=0.2, min=0.0, max=1.0, step=0.01),
+                io.Float.Input("scale", default=1.0, min=0.0, max=10.0, step=0.01),
+                io.Int.Input("sharpen", default=0, min=0, max=10),
+                io.Float.Input("src_gamma", default=1.0, min=0.0, max=10.0, step=0.01),
+                io.Int.Input("seed", default=1, min=1, max=1000),
+            ],
+            outputs=[
+                io.Image.Output("image"),
+            ],
+        )
 
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ()
-
-    FUNCTION = "filmgrain_image"
-
-    CATEGORY = "Pro Post/Camera Effects"
-
+    @classmethod
     @torch.inference_mode()
-    def filmgrain_image(self, image: torch.Tensor, gray_scale: bool, grain_type: str,
-                        grain_sat: float, grain_power: float, shadows: float,
-                        highs: float, scale: float, sharpen: int,
-                        src_gamma: float, seed: int):
-        grain_type_index = self.grain_types.index(grain_type) + 1
+    def execute(cls, image: torch.Tensor, gray_scale: bool, grain_type: str,
+                grain_sat: float, grain_power: float, shadows: float,
+                highs: float, scale: float, sharpen: int,
+                src_gamma: float, seed: int) -> io.NodeOutput:
+        grain_type_index = cls.GRAIN_TYPES.index(grain_type) + 1
         results = []
         for b in range(image.shape[0]):
             result = filmgrainer.process(
@@ -219,59 +165,35 @@ class ProPostFilmGrain:
                 grain_type_index, grain_sat, gray_scale, sharpen, seed + b
             )
             results.append(result)
-        return (torch.stack(results),)
+        return io.NodeOutput(torch.stack(results))
 
 
-class ProPostRadialBlur:
+class ProPostRadialBlur(io.ComfyNode):
     @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "image": ("IMAGE",),
-                "blur_strength": ("FLOAT", {
-                    "default": 64.0,
-                    "min": 0.0,
-                    "max": 256.0,
-                    "step": 1.0
-                }),
-                "center_x": ("FLOAT", {
-                    "default": 0.5,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.01
-                }),
-                "center_y": ("FLOAT", {
-                    "default": 0.5,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.01
-                }),
-                "focus_spread": ("FLOAT", {
-                    "default": 1,
-                    "min": 0.1,
-                    "max": 8.0,
-                    "step": 0.1
-                }),
-                "steps": ("INT", {
-                    "default": 5,
-                    "min": 1,
-                    "max": 32,
-                }),
-            },
-        }
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="ProPostRadialBlurTorched",
+            display_name="ProPost Radial Blur (Torched)",
+            category="Pro Post/Blur Effects",
+            inputs=[
+                io.Image.Input("image"),
+                io.Float.Input("blur_strength", default=64.0, min=0.0, max=256.0, step=1.0),
+                io.Float.Input("center_x", default=0.5, min=0.0, max=1.0, step=0.01),
+                io.Float.Input("center_y", default=0.5, min=0.0, max=1.0, step=0.01),
+                io.Float.Input("focus_spread", default=1.0, min=0.1, max=8.0, step=0.1),
+                io.Int.Input("steps", default=5, min=1, max=32),
+            ],
+            outputs=[
+                io.Image.Output("image"),
+            ],
+        )
 
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ()
-
-    FUNCTION = "radialblur_image"
-
-    CATEGORY = "Pro Post/Blur Effects"
-
+    @classmethod
     @torch.inference_mode()
-    def radialblur_image(self, image: torch.Tensor, blur_strength: float,
-                         center_x: float, center_y: float,
-                         focus_spread: float, steps: int):
-        B, H, W, C = image.shape
+    def execute(cls, image: torch.Tensor, blur_strength: float,
+                center_x: float, center_y: float,
+                focus_spread: float, steps: int) -> io.NodeOutput:
+        _, H, W, _ = image.shape
         device = image.device
 
         cx, cy = W * center_x, H * center_y
@@ -290,80 +212,43 @@ class ProPostRadialBlur:
         blurred = processing_utils.generate_blurred_images(
             img_4d, blur_strength, steps, focus_spread)
         out = processing_utils.apply_blurred_images(img_4d, blurred, radial_mask)
-        return (out.permute(0, 2, 3, 1).clamp(0.0, 1.0),)
+        return io.NodeOutput(out.permute(0, 2, 3, 1).clamp(0.0, 1.0))
 
 
-class ProPostDepthMapBlur:
+class ProPostDepthMapBlur(io.ComfyNode):
     @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "image": ("IMAGE",),
-                "depth_map": ("IMAGE",),
-                "blur_strength": ("FLOAT", {
-                    "default": 64.0,
-                    "min": 0.0,
-                    "max": 256.0,
-                    "step": 1.0
-                }),
-                "focal_depth": ("FLOAT", {
-                    "default": 1.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.01
-                }),
-                "focus_spread": ("FLOAT", {
-                    "default": 1,
-                    "min": 1.0,
-                    "max": 8.0,
-                    "step": 0.1
-                }),
-                "steps": ("INT", {
-                    "default": 5,
-                    "min": 1,
-                    "max": 32,
-                }),
-                "focal_range": ("FLOAT", {
-                    "default": 0.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.01
-                }),
-                "mask_blur": ("INT", {
-                    "default": 1,
-                    "min": 1,
-                    "max": 127,
-                    "step": 2
-                }),
-            },
-        }
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="ProPostDepthMapBlurTorched",
+            display_name="ProPost Depth Map Blur (Torched)",
+            category="Pro Post/Blur Effects",
+            description=(
+                "Applies blur based on a depth map while returning both the blurred image "
+                "and the generated blur mask."
+            ),
+            inputs=[
+                io.Image.Input("image"),
+                io.Image.Input("depth_map"),
+                io.Float.Input("blur_strength", default=64.0, min=0.0, max=256.0, step=1.0),
+                io.Float.Input("focal_depth", default=1.0, min=0.0, max=1.0, step=0.01),
+                io.Float.Input("focus_spread", default=1.0, min=1.0, max=8.0, step=0.1),
+                io.Int.Input("steps", default=5, min=1, max=32),
+                io.Float.Input("focal_range", default=0.0, min=0.0, max=1.0, step=0.01),
+                io.Int.Input("mask_blur", default=1, min=1, max=127, step=2),
+            ],
+            outputs=[
+                io.Image.Output("image"),
+                io.Mask.Output("mask"),
+            ],
+        )
 
-    RETURN_TYPES = ("IMAGE", "MASK")
-    RETURN_NAMES = ()
-
-    FUNCTION = "depthblur_image"
-    DESCRIPTION = """
-    blur_strength: Represents the blur strength. This parameter controls the overall intensity of the blur effect; the higher the value, the more blurred the image becomes.
-
-    focal_depth: Represents the focal depth. This parameter is used to determine which depth level in the image should remain sharp, while other levels are blurred based on depth differences.
-
-    focus_spread: Represents the focus spread range. This parameter controls the size of the blur transition area near the focal depth; the larger the value, the wider the transition area, and the smoother the blur effect spreads around the focus.
-
-    steps: Represents the number of steps in the blur process. This parameter determines the calculation precision of the blur effect; the more steps, the finer the blur effect, but this also increases the computational load.
-
-    focal_range: Represents the focal range. This parameter is used to adjust the depth range within the focal depth that remains sharp; the larger the value, the wider the area around the focal depth that remains sharp.
-
-    mask_blur: Represents the mask blur strength for blurring the depth map. This parameter controls the intensity of the depth map's blur treatment, used for preprocessing the depth map before calculating the final blur effect, to achieve a more natural blur transition.
-    """
-
-    CATEGORY = "Pro Post/Blur Effects"
-
+    @classmethod
     @torch.inference_mode()
-    def depthblur_image(self, image: torch.Tensor, depth_map: torch.Tensor,
-                        blur_strength: float, focal_depth: float,
-                        focus_spread: float, steps: int,
-                        focal_range: float, mask_blur: int):
-        B, H, W, C = image.shape
+    def execute(cls, image: torch.Tensor, depth_map: torch.Tensor,
+                blur_strength: float, focal_depth: float,
+                focus_spread: float, steps: int,
+                focal_range: float, mask_blur: int) -> io.NodeOutput:
+        _, H, W, _ = image.shape
         device = image.device
 
         img_4d = image.permute(0, 3, 1, 2)
@@ -398,39 +283,32 @@ class ProPostDepthMapBlur:
 
         out_images = out.permute(0, 2, 3, 1).clamp(0.0, 1.0)
         out_masks = depth_mask.squeeze(1)
-        return (out_images, out_masks)
+        return io.NodeOutput(out_images, out_masks)
 
 
-class ProPostApplyLUT:
+class ProPostApplyLUT(io.ComfyNode):
     @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "image": ("IMAGE",),
-                "lut_name": (folder_paths.get_filename_list("luts"),),
-                "strength": ("FLOAT", {
-                    "default": 1.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.01
-                }),
-                "log": ("BOOLEAN", {
-                    "default": False
-                }),
-            },
-        }
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="ProPostApplyLUTTorched",
+            display_name="ProPost Apply LUT (Torched)",
+            category="Pro Post/Color Grading",
+            inputs=[
+                io.Image.Input("image"),
+                io.Combo.Input("lut_name", options=folder_paths.get_filename_list("luts")),
+                io.Float.Input("strength", default=1.0, min=0.0, max=1.0, step=0.01),
+                io.Boolean.Input("log", default=False),
+            ],
+            outputs=[
+                io.Image.Output("image"),
+            ],
+        )
 
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ()
-
-    FUNCTION = "lut_image"
-
-    CATEGORY = "Pro Post/Color Grading"
-
+    @classmethod
     @torch.inference_mode()
-    def lut_image(self, image: torch.Tensor, lut_name, strength: float, log: bool):
+    def execute(cls, image: torch.Tensor, lut_name: str, strength: float, log: bool) -> io.NodeOutput:
         if strength == 0:
-            return (image,)
+            return io.NodeOutput(image)
 
         lut_path = os.path.join(existing_list[0], lut_name)
         lut = _load_lut(lut_path)
@@ -462,7 +340,22 @@ class ProPostApplyLUT:
         if is_non_default:
             lut_out = ((lut_out - dom_min) / dom_scale).clamp(0.0, 1.0)
 
-        return ((image + strength * (lut_out - image)).clamp(0.0, 1.0),)
+        return io.NodeOutput((image + strength * (lut_out - image)).clamp(0.0, 1.0))
+
+
+class ProPostTorchedExtension(ComfyExtension):
+    async def get_node_list(self) -> list[type[io.ComfyNode]]:
+        return [
+            ProPostVignette,
+            ProPostFilmGrain,
+            ProPostRadialBlur,
+            ProPostDepthMapBlur,
+            ProPostApplyLUT,
+        ]
+
+
+async def comfy_entrypoint() -> ComfyExtension:
+    return ProPostTorchedExtension()
 
 
 NODE_CLASS_MAPPINGS = {
@@ -481,4 +374,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ProPostApplyLUTTorched": "ProPost Apply LUT (Torched)",
 }
 
-__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
+__all__ = [
+    "ProPostTorchedExtension",
+    "comfy_entrypoint",
+    "NODE_CLASS_MAPPINGS",
+    "NODE_DISPLAY_NAME_MAPPINGS",
+]
