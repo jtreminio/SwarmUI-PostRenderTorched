@@ -1,44 +1,89 @@
 # SwarmUI-PostRenderTorched
 
-A [SwarmUI](https://github.com/mcmonkeyprojects/SwarmUI/) extension that adds parameters for [ProPost Torched](https://github.com/jtreminio/comfyui-propost-torched).
+A [SwarmUI](https://github.com/mcmonkeyprojects/SwarmUI/) extension that adds parameters for [ProPost Torched](https://github.com/digitaljohn/comfyui-propost/).
 
 This version is a fork of [HellerCommaA/SwarmUI-PostRender](https://github.com/HellerCommaA/SwarmUI-PostRender), refactored to by Torch-driven instead of CPU-driven. Benchmarks show a nearly 100% reduction in generation time penalty - while not literally free, using this extension is the closest to "free" as anything in computers can get.
 
-The rest of the original README follows:
+# Benefits over original [HellerCommaA/SwarmUI-PostRender](https://github.com/HellerCommaA/SwarmUI-PostRender)
 
-Most notably, LUTs are able to be applied during an image generation. If you're not familiar with what a LUT is, a quick 10,000 ft overview: high quality photo filters.
+In practice, this extension gives you a much more SwarmUI-friendly version of ProPost:
 
-***If the nodes are not installed in the ComfyUI backend the parameters for that node won't show up in the generate tab.***
+- The post effects are torch-driven, so they run far faster than the original CPU-oriented version and feel much more practical to leave enabled in real workflows
+- Film Grain, Vignette, Depth Map Blur, and Radial Blur all include built-in presets, so you can start from good looks instead of dialing every slider from scratch
+- The ComfyUI node dependency is bundled with the extension, no extra Python dependencies needed other than what ComfyUI already uses
+- A set of LUTs is also baked in, so the LUT effect has useful options available out of the box instead of starting empty
 
-*** Shout out to Quaggles for their excellent work on [SwarmUI-FaceTools](https://github.com/Quaggles/SwarmUI-FaceTools/tree/master) who I lifted a lot of this work from ***
+So the short version is: this is the "make ProPost pleasant to use in SwarmUI" edition.
 
-## Roadmap
-1. All nodes are implemented, bug fixes
+# Benchmarks
 
-## Notes
-LUTs are stored in SwarmUI/Models/luts. There is no need to install luts at any other location.
+For a batch of 9 images:
 
-## Installation
+* z-image-base + z-image-turbo for final resolution of 2592x3792
+* Prompt "Young woman, smiling, looking at viewer, in a scenic location."
+* starting seed of `42`
+* AMD Ryzen 9 9950X3D 16-Core CPU
+* 128gb DDR5 RAM
+* RTX Pro 6000 96gb VRAM
 
-#### Automatic Install (suggested):
-1. Select the extension in the Server -> Extensions tab and click 'Install'
-The extension will be kept up to date when `update-(your platform)` is run
-2. Be sure you have gone to the Generate tab then expanded the `ControlNet` group and clicked `Install` there as well!
+the generated speeds are:
 
-#### Manual Install (not suggested):
-1. Shutdown SwarmUI
-2. Open a cmd/terminal window in `SwarmUI\src\Extensions`
-3. Run `git clone https://github.com/jtreminio/SwarmUI-PostRenderTorched.git`
-4. Run `SwarmUI\update-windows.bat` to recompile SwarmUI
-5. Launch SwarmUI as usual, if the ProPost nodes are installed you should see parameter groups for them in the generate tab.
-6. Expand the `Post Render Torched` group and click `Install ProPost (Torched) Nodes`. Click OK to confirm, then once the install is finished, restart SwarmUI.
-7. Be sure you have gone to the Generate tab then expanded the `ControlNet` group and clicked `Install` there as well!
+Base, without any post-rendering:
+* Generated an image in 0.00 sec (prep) and 19.92 sec (gen)
+* Generated an image in 19.90 sec (prep) and 19.92 sec (gen)
+* Generated an image in 39.79 sec (prep) and 20.17 sec (gen)
+* Generated an image in 59.94 sec (prep) and 19.78 sec (gen)
+* Generated an image in 80.10 sec (prep) and 20.57 sec (gen)
+* Generated an image in 100.65 sec (prep) and 20.74 sec (gen)
+* Generated an image in 2.02 min (prep) and 20.68 sec (gen)
+* Generated an image in 2.37 min (prep) and 20.87 sec (gen)
+* Generated an image in 2.71 min (prep) and 20.76 sec (gen)
 
-## Updating
-1. Shutdown SwarmUI
-2. Open a cmd/terminal window in `SwarmUI\src\Extensions\SwarmUI-PostRenderTorched`
-3. Run `git pull`
-4. Run `SwarmUI\update-windows.bat` to recompile SwarmUI
+**183.4 total generation time**
 
-## Usage
-Check out [ProPost Torched](https://github.com/jtreminio/comfyui-propost-torched) for clear usage.
+Then compare with both PostRender and PostRenderTorched using:
+* Film Grain
+    * Type: Fine Simple
+    * Saturation: 0.3
+    * Power: 0.3
+    * Shadows: 0.35
+    * Highlights: 0.1
+    * Scale: 1
+    * Sharpen: 0
+    * Source Gamma: 1
+* Vignette
+    * Strength: 0.42
+    * X Position: 0.5
+    * Y Position: 0.5
+* LUT
+    * Film Emulation/Kodak Professional Portra 400.cube
+    * Strength: 0.6
+    * LOG Space: false
+
+[HellerCommaA/SwarmUI-PostRender](https://github.com/HellerCommaA/SwarmUI-PostRender):
+Generated an image in 0.00 sec (prep) and 24.77 sec (gen)
+Generated an image in 24.75 sec (prep) and 25.14 sec (gen)
+Generated an image in 49.87 sec (prep) and 25.54 sec (gen)
+Generated an image in 75.39 sec (prep) and 25.47 sec (gen)
+Generated an image in 100.84 sec (prep) and 25.31 sec (gen)
+Generated an image in 2.10 min (prep) and 25.46 sec (gen)
+Generated an image in 2.53 min (prep) and 25.49 sec (gen)
+Generated an image in 2.95 min (prep) and 25.42 sec (gen)
+Generated an image in 3.37 min (prep) and 25.48 sec (gen)
+
+**228.0 total generation time, 24.3% increase**
+
+[jtreminio/SwarmUI-PostRenderTorched](https://github.com/jtreminio/SwarmUI-PostRenderTorched) (this repo):
+Generated an image in 0.01 sec (prep) and 21.06 sec (gen)
+Generated an image in 21.04 sec (prep) and 21.33 sec (gen)
+Generated an image in 42.27 sec (prep) and 21.58 sec (gen)
+Generated an image in 63.83 sec (prep) and 21.55 sec (gen)
+Generated an image in 85.35 sec (prep) and 21.69 sec (gen)
+Generated an image in 107.16 sec (prep) and 22.08 sec (gen)
+Generated an image in 2.15 min (prep) and 21.93 sec (gen)
+Generated an image in 2.52 min (prep) and 21.79 sec (gen)
+Generated an image in 2.88 min (prep) and 21.94 sec (gen)
+
+**195.0 total generation time, 6.3% increase**
+
+As shown, [jtreminio/SwarmUI-PostRenderTorched](https://github.com/jtreminio/SwarmUI-PostRenderTorched) is approximately **74% faster** compared to [HellerCommaA/SwarmUI-PostRender](https://github.com/HellerCommaA/SwarmUI-PostRender).
