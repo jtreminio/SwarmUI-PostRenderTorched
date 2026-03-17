@@ -1,0 +1,15 @@
+[project]
+name = "comfyui-propost-torched"
+description = "A set of custom ComfyUI nodes for performing basic post-processing effects including Film Grain and Vignette. These effects can help to take the edge off AI imagery and make them feel more natural. Rewritten with PyTorch tensor operations for CPU and CUDA execution."
+version = "2.0.0"
+license = "MIT"
+dependencies = ["numpy", "Pillow", "torch"]
+
+[project.urls]
+Repository = "https://github.com/jtreminio/comfyui-propost-torched"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = "jtreminio"
+DisplayName = "comfyui-propost-torched"
+Icon = ""

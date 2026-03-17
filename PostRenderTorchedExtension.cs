@@ -245,25 +245,12 @@ public class PostRenderTorchedExtension : Extension
         ComfyUIBackendExtension.NodeToFeatureMap[NodeNameDMBlurTorched] = FeatureFlagPostRender;
         ComfyUIBackendExtension.NodeToFeatureMap[NodeNameRadialBlurTorched] = FeatureFlagPostRender;
         ComfyUIBackendExtension.NodeToFeatureMap[NodeNameLutTorched] = FeatureFlagPostRender;
-        InstallableFeatures.RegisterInstallableFeature(new(
-            DisplayName: "ProPost (Torched)",
-            ID: "propost_torched",
-            URL: "https://github.com/jtreminio/comfyui-propost-torched",
-            Author: "jtreminio",
-            Notice: "This will install the ProPost (Torched) custom nodes.\nDo you wish to install?",
-            SkipPipCache: false,
-            AutoInstall: false
-        ));
 
-        string torchedExtensionPath = Utilities.CombinePathWithAbsolute(
-            Environment.CurrentDirectory, 
-            $"{ComfyUIBackendExtension.Folder}/DLNodes/comfyui-propost-torched"
-        );
-        if (Directory.Exists(torchedExtensionPath))
-        {
-            ComfyUIBackendExtension.FeaturesSupported.UnionWith([FeatureFlagPostRender]);
-            ComfyUIBackendExtension.FeaturesDiscardIfNotFound.UnionWith([FeatureFlagPostRender]);
-        }
+        var nodeFolder = Path.GetFullPath(Path.Join(FilePath, "comfy_node"));
+        ComfyUISelfStartBackend.CustomNodePaths.Add(nodeFolder);
+        Logs.Init($"PostRender Torched: added {nodeFolder} to ComfyUI CustomNodePaths");
+        ComfyUIBackendExtension.FeaturesSupported.UnionWith([FeatureFlagPostRender]);
+        ComfyUIBackendExtension.FeaturesDiscardIfNotFound.UnionWith([FeatureFlagPostRender]);
 
         T2IParamTypes.ConcatDropdownValsClean(ref LutModels,
             [.. Directory.EnumerateFiles(extensionLutPath, "*.cube", SearchOption.AllDirectories).Select(f => Path.GetRelativePath(extensionLutPath, f)).OrderBy(f => f)]
