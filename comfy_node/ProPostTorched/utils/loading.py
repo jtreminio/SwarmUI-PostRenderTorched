@@ -87,6 +87,7 @@ def _parse_cube(lut_path: str) -> CubeLUT:
         comments=comments,
     )
 
+
 def read_lut(lut_path, clip=False):
     """
     Reads a LUT from the specified path, returning a parsed 1D or 3D LUT.

@@ -2,9 +2,10 @@
 # Torch-based rewrite - by Juan Treminio - MIT License
 
 import torch
+import comfy.model_management
 import torch.nn.functional as F
 
-# In-memory grain cache: (W, H, sat_key, grain_size, power, seed, device_str) → [H, W, 3] uint8
+# In-memory grain cache: (W, H, sat_key, grain_size, power, seed, device_str) -> [H, W, 3] uint8
 _cache: dict = {}
 
 
@@ -16,7 +17,7 @@ def grainGen(width: int, height: int, grain_size: float, power: float,
     saturation < 0 produces grayscale (identical R/G/B channels).
     """
     if device is None:
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        device = comfy.model_management.intermediate_device()
 
     sat_key = -1.0 if saturation < 0.0 else saturation
     cache_key = (width, height, sat_key, grain_size, power, seed, str(device))
@@ -47,7 +48,7 @@ def grainGen(width: int, height: int, grain_size: float, power: float,
         noise = (chroma * saturation + intens).clamp(0, 255)
 
     if noise_w != width or noise_h != height:
-        # [H, W, C] → [1, C, H, W] for interpolate, back to [H, W, C]
+        # [H, W, C] -> [1, C, H, W] for interpolate, back to [H, W, C]
         noise = F.interpolate(
             noise.permute(2, 0, 1).unsqueeze(0).float(),
             size=(height, width), mode='bilinear', align_corners=False

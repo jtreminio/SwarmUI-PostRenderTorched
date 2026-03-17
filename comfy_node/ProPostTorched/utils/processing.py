@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 
-# Kernel cache: (kernel_size, device_str, dtype_str) → [k] tensor
+# Kernel cache: (kernel_size, device_str, dtype_str) -> [k] tensor
 _kernel_cache: dict = {}
 
 
@@ -21,7 +21,7 @@ def _gaussian_kernel_1d(kernel_size: int, device: torch.device,
 def gaussian_blur(image_4d: torch.Tensor, kernel_size: int) -> torch.Tensor:
     """
     image_4d: [N, C, H, W] float32.
-    Depthwise separable Gaussian blur — one kernel applied independently per channel.
+    Depthwise separable Gaussian blur - one kernel applied independently per channel.
     """
     if kernel_size <= 1:
         return image_4d

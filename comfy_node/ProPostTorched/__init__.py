@@ -3,18 +3,19 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import folder_paths
-from .ComfyUI_Propost_Torched.utils import processing as processing_utils
-from .ComfyUI_Propost_Torched.utils import loading as loading_utils
-from .ComfyUI_Propost_Torched.filmgrainer import filmgrainer
+
+from .utils import processing as processing_utils
+from .utils import loading as loading_utils
+from .filmgrainer import filmgrainer
 
 dir_luts = folder_paths.folder_names_and_paths.get("luts", None)
 existing_list = dir_luts[0]
 folder_paths.folder_names_and_paths["luts"] = (
     existing_list + [os.path.join(folder_paths.models_dir, "luts")], set(['.cube']))
 
-# LUT file cache — avoids re-reading .cube files from disk on every invocation
+# LUT file cache -- avoids re-reading .cube files from disk on every invocation
 _lut_file_cache: dict = {}
-# Device LUT tensor cache — avoids re-uploading the same LUT to GPU every invocation
+# Device LUT tensor cache -- avoids re-uploading the same LUT to GPU every invocation
 _lut_tensor_cache: dict = {}
 
 
@@ -131,8 +132,8 @@ class ProPostVignette:
         )
         radius = (X ** 2 + Y ** 2).sqrt() / (max_dist * 2 ** 0.5)
         opacity = min(intensity, 1.0)
-        vignette = (1.0 - radius * opacity).clamp(0.0, 1.0)  # [H, W]
-        vignette = vignette.unsqueeze(0).unsqueeze(-1)         # [1, H, W, 1]
+        vignette = (1.0 - radius * opacity).clamp(0.0, 1.0)
+        vignette = vignette.unsqueeze(0).unsqueeze(-1)
 
         return ((image * vignette).clamp(0.0, 1.0),)
 
@@ -285,7 +286,7 @@ class ProPostRadialBlur:
         )
         radial_mask = ((X ** 2 + Y ** 2).sqrt() / max_dist).clamp(0.0, 1.0)
 
-        img_4d = image.permute(0, 3, 1, 2)  # [B, C, H, W]
+        img_4d = image.permute(0, 3, 1, 2)
         blurred = processing_utils.generate_blurred_images(
             img_4d, blur_strength, steps, focus_spread)
         out = processing_utils.apply_blurred_images(img_4d, blurred, radial_mask)
@@ -365,25 +366,22 @@ class ProPostDepthMapBlur:
         B, H, W, C = image.shape
         device = image.device
 
-        img_4d = image.permute(0, 3, 1, 2)       # [B, C, H, W]
-        depth_4d = depth_map.permute(0, 3, 1, 2)  # [B, Cd, Hd, Wd]
+        img_4d = image.permute(0, 3, 1, 2)
+        depth_4d = depth_map.permute(0, 3, 1, 2)
         if depth_4d.shape[2:] != (H, W):
             depth_4d = F.interpolate(
                 depth_4d.float(), size=(H, W), mode='bilinear', align_corners=False)
 
-        # Rec.709 luminance -> single-channel depth
         if depth_4d.shape[1] >= 3:
             luma_w = torch.tensor([0.2126, 0.7152, 0.0722], device=device).view(1, 3, 1, 1)
             depth_gray = (depth_4d[:, :3].float() * luma_w).sum(dim=1, keepdim=True)
         else:
             depth_gray = depth_4d[:, :1].float()
 
-        # Distance from focal plane
         depth_mask = (depth_gray - focal_depth).abs()
         mask_max = depth_mask.amax(dim=(2, 3), keepdim=True).clamp(min=1e-7)
         depth_mask = (depth_mask / mask_max).clamp(0.0, 1.0)
 
-        # Focal range: zero out the in-focus zone, rescale the rest
         depth_mask = torch.where(
             depth_mask < focal_range,
             torch.zeros_like(depth_mask),
@@ -399,7 +397,7 @@ class ProPostDepthMapBlur:
         out = processing_utils.apply_blurred_images(img_4d, blurred, depth_mask)
 
         out_images = out.permute(0, 2, 3, 1).clamp(0.0, 1.0)
-        out_masks = depth_mask.squeeze(1)  # [B, H, W]
+        out_masks = depth_mask.squeeze(1)
         return (out_images, out_masks)
 
 
@@ -454,9 +452,9 @@ class ProPostApplyLUT:
         if log:
             frame = frame.clamp(min=1e-7).pow(1.0 / 2.2)
 
-        if len(lut.table.shape) == 2:  # LUT3x1D [N, 3]
+        if len(lut.table.shape) == 2:
             lut_out = _apply_1d_lut(frame, lut_t)
-        else:                           # LUT3D [N, N, N, 3]
+        else:
             lut_out = _apply_3d_lut(frame, lut_t)
 
         if log:

@@ -2,11 +2,12 @@
 # Torch-based rewrite - by Juan Treminio - MIT License
 
 import torch
+import comfy.model_management
 
 _ShadowEnd = 160
 _HighlightStart = 200
 
-# (src_gamma, noise_power, shadow_level, high_level, device_str) → Map
+# (src_gamma, noise_power, shadow_level, high_level, device_str) -> Map
 _lut_cache: dict = {}
 
 
@@ -18,7 +19,7 @@ class Map:
     def calculate(src_gamma, noise_power, shadow_level, high_level,
                   device: torch.device = None) -> 'Map':
         if device is None:
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            device = comfy.model_management.intermediate_device()
 
         cache_key = (src_gamma, noise_power, shadow_level, high_level, str(device))
         if cache_key in _lut_cache:
