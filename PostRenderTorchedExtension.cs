@@ -65,6 +65,10 @@ public class PostRenderTorchedExtension : Extension
     #region Lut
     public const string NodeNameLut = "ProPostApplyLUT";
     public List<string> LutModels = [];
+    private List<string> LocalLutModels = [];
+    private List<string> BackendLutModels = [];
+    private string ExtensionLutPath;
+    private string ModelLutPath;
     public T2IRegisteredParam<float> LutStrength;
     public T2IRegisteredParam<bool> LutLogSpace;
     public T2IRegisteredParam<string> LutName;
@@ -101,6 +105,7 @@ public class PostRenderTorchedExtension : Extension
 
         RegisterParameterRemaps();
         InstallComfyUINodes();
+        Program.ModelRefreshEvent += RefreshLocalLutModels;
         RegisterParameters();
 
         # region Film Grain
@@ -261,11 +266,11 @@ public class PostRenderTorchedExtension : Extension
 
     private void InstallComfyUINodes()
     {
-        string extensionLutPath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, "src/Extensions/SwarmUI-PostRenderTorched/luts");
-        string modelLutPath = Utilities.CombinePathWithAbsolute(Program.ServerSettings.Paths.ActualModelRoot, "luts");
-        Directory.CreateDirectory(extensionLutPath);
-        Directory.CreateDirectory(modelLutPath);
-        ComfyUISelfStartBackend.FoldersToForwardInComfyPath.Add($"luts;{extensionLutPath}");
+        ExtensionLutPath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, "src/Extensions/SwarmUI-PostRenderTorched/luts");
+        ModelLutPath = Utilities.CombinePathWithAbsolute(Program.ServerSettings.Paths.ActualModelRoot, "luts");
+        Directory.CreateDirectory(ExtensionLutPath);
+        Directory.CreateDirectory(ModelLutPath);
+        ComfyUISelfStartBackend.FoldersToForwardInComfyPath.Add($"luts;{ExtensionLutPath}");
 
         ComfyUIBackendExtension.NodeToFeatureMap[NodeNameFilmGrain] = FeatureFlagPostRender;
         ComfyUIBackendExtension.NodeToFeatureMap[NodeNameVignette] = FeatureFlagPostRender;
@@ -278,22 +283,8 @@ public class PostRenderTorchedExtension : Extension
         Logs.Init($"PostRender Torched: added {nodeFolder} to ComfyUI CustomNodePaths");
         ComfyUIBackendExtension.FeaturesSupported.UnionWith([FeatureFlagPostRender]);
         ComfyUIBackendExtension.FeaturesDiscardIfNotFound.UnionWith([FeatureFlagPostRender]);
-
-        T2IParamTypes.ConcatDropdownValsClean(ref LutModels,
-            [.. Directory.EnumerateFiles(extensionLutPath, "*.cube", SearchOption.AllDirectories).Select(f => Path.GetRelativePath(extensionLutPath, f)).OrderBy(f => f)]
-        );
-        T2IParamTypes.ConcatDropdownValsClean(ref LutModels,
-            [.. Directory.EnumerateFiles(modelLutPath, "*.cube", SearchOption.AllDirectories).Select(f => Path.GetRelativePath(modelLutPath, f)).OrderBy(f => f)]
-        );
-
-        ComfyUIBackendExtension.RawObjectInfoParsers.Add(rawObjectInfo =>
-        {
-            rawObjectInfo.TryGetValue(NodeNameLut, out JToken lutNode);
-            if (lutNode != null)
-            {
-                T2IParamTypes.ConcatDropdownValsClean(ref LutModels, lutNode["input"]["required"]["lut_name"][0].Select(m => $"{m}"));
-            }
-        });
+        RefreshLocalLutModels();
+        ComfyUIBackendExtension.RawObjectInfoParsers.Add(RefreshLutModelsFromRawObjectInfo);
     }
 
     private void RegisterParameters()
@@ -931,5 +922,49 @@ public class PostRenderTorchedExtension : Extension
         {
             throw new SwarmUserErrorException("Post Render Torched nodes are not installed");
         }
+    }
+
+    private static IEnumerable<string> EnumerateLutFiles(string rootPath)
+    {
+        if (!Directory.Exists(rootPath))
+        {
+            return [];
+        }
+        return Directory.EnumerateFiles(rootPath, "*", SearchOption.AllDirectories)
+            .Where(f => string.Equals(Path.GetExtension(f), ".cube", StringComparison.OrdinalIgnoreCase))
+            .Select(f => Path.GetRelativePath(rootPath, f));
+    }
+
+    private void RebuildLutModels()
+    {
+        List<string> lutModels = [];
+        T2IParamTypes.ConcatDropdownValsClean(ref lutModels, LocalLutModels);
+        T2IParamTypes.ConcatDropdownValsClean(ref lutModels, BackendLutModels);
+        LutModels = lutModels;
+    }
+
+    private void RefreshLocalLutModels()
+    {
+        if (string.IsNullOrWhiteSpace(ExtensionLutPath) || string.IsNullOrWhiteSpace(ModelLutPath))
+        {
+            return;
+        }
+        LocalLutModels =
+        [
+            .. EnumerateLutFiles(ExtensionLutPath).OrderBy(f => f),
+            .. EnumerateLutFiles(ModelLutPath).OrderBy(f => f)
+        ];
+        RebuildLutModels();
+    }
+
+    private void RefreshLutModelsFromRawObjectInfo(JObject rawObjectInfo)
+    {
+        rawObjectInfo.TryGetValue(NodeNameLut, out JToken lutNode);
+        if (lutNode == null)
+        {
+            return;
+        }
+        BackendLutModels = [.. lutNode["input"]["required"]["lut_name"][0].Select(m => $"{m}")];
+        RebuildLutModels();
     }
 }
