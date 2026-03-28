@@ -160,29 +160,31 @@ internal sealed class DepthMapBlurFeature
     {
         WorkflowGenerator.AddStep(g =>
         {
-            if (g.UserInput.TryGet(BlurStrength, out float _))
+            if (!g.UserInput.TryGet(BlurStrength, out float blurStrength))
             {
-                ApplyPreset(g);
-                string depthAnything = g.CreateNode(NodeNameDepthMap, new JObject
-                {
-                    ["image"] = g.CurrentMedia.Path,
-                    ["resolution"] = int.Parse(g.UserInput.Get(PreProcessorResolution)),
-                    ["ckpt_name"] = g.UserInput.Get(PreProcessorModelName),
-                });
-                JArray depthMap = [depthAnything, 0];
-                string blurNode = g.CreateNode(NodeName, new JObject
-                {
-                    ["image"] = g.CurrentMedia.Path,
-                    ["depth_map"] = depthMap,
-                    ["blur_strength"] = g.UserInput.Get(BlurStrength),
-                    ["focal_depth"] = g.UserInput.Get(FocalDepth),
-                    ["focus_spread"] = g.UserInput.Get(FocusSpread),
-                    ["steps"] = g.UserInput.Get(Steps),
-                    ["focal_range"] = g.UserInput.Get(FocalRange),
-                    ["mask_blur"] = g.UserInput.Get(MaskBlur),
-                });
-                g.CurrentMedia = g.CurrentMedia.WithPath([blurNode, 0]);
+                return;
             }
+
+            ApplyPreset(g);
+            string depthAnything = g.CreateNode(NodeNameDepthMap, new JObject
+            {
+                ["image"] = g.CurrentMedia.Path,
+                ["resolution"] = int.Parse(g.UserInput.Get(PreProcessorResolution)),
+                ["ckpt_name"] = g.UserInput.Get(PreProcessorModelName),
+            });
+            JArray depthMap = [depthAnything, 0];
+            string blurNode = g.CreateNode(NodeName, new JObject
+            {
+                ["image"] = g.CurrentMedia.Path,
+                ["depth_map"] = depthMap,
+                ["blur_strength"] = blurStrength,
+                ["focal_depth"] = g.UserInput.Get(FocalDepth),
+                ["focus_spread"] = g.UserInput.Get(FocusSpread),
+                ["steps"] = g.UserInput.Get(Steps),
+                ["focal_range"] = g.UserInput.Get(FocalRange),
+                ["mask_blur"] = g.UserInput.Get(MaskBlur),
+            });
+            g.CurrentMedia = g.CurrentMedia.WithPath([blurNode, 0]);
         }, stepPriorityCtr);
         stepPriorityCtr += 0.01f;
     }

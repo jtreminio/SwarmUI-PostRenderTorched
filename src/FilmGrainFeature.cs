@@ -189,25 +189,27 @@ internal sealed class FilmGrainFeature
     {
         WorkflowGenerator.AddStep(g =>
         {
-            if (g.UserInput.TryGet(GrayScale, out bool grayScale))
+            if (!g.UserInput.TryGet(GrainType, out string grainType))
             {
-                ApplyPreset(g);
-                string filmNode = g.CreateNode(NodeName, new JObject
-                {
-                    ["image"] = g.CurrentMedia.Path,
-                    ["gray_scale"] = grayScale,
-                    ["grain_type"] = g.UserInput.Get(GrainType),
-                    ["grain_sat"] = g.UserInput.Get(GrainSaturation),
-                    ["grain_power"] = g.UserInput.Get(GrainPower),
-                    ["shadows"] = g.UserInput.Get(Shadows),
-                    ["highs"] = g.UserInput.Get(Highlights),
-                    ["scale"] = g.UserInput.Get(Scale),
-                    ["sharpen"] = g.UserInput.Get(Sharpen),
-                    ["src_gamma"] = g.UserInput.Get(SourceGamma),
-                    ["seed"] = g.UserInput.Get(Seed),
-                });
-                g.CurrentMedia = g.CurrentMedia.WithPath([filmNode, 0]);
+                return;
             }
+
+            ApplyPreset(g);
+            string filmNode = g.CreateNode(NodeName, new JObject
+            {
+                ["image"] = g.CurrentMedia.Path,
+                ["gray_scale"] = g.UserInput.Get(GrayScale),
+                ["grain_type"] = grainType,
+                ["grain_sat"] = g.UserInput.Get(GrainSaturation),
+                ["grain_power"] = g.UserInput.Get(GrainPower),
+                ["shadows"] = g.UserInput.Get(Shadows),
+                ["highs"] = g.UserInput.Get(Highlights),
+                ["scale"] = g.UserInput.Get(Scale),
+                ["sharpen"] = g.UserInput.Get(Sharpen),
+                ["src_gamma"] = g.UserInput.Get(SourceGamma),
+                ["seed"] = g.UserInput.Get(Seed),
+            });
+            g.CurrentMedia = g.CurrentMedia.WithPath([filmNode, 0]);
         }, stepPriorityCtr);
         stepPriorityCtr += 0.01f;
     }

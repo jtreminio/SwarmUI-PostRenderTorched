@@ -91,18 +91,20 @@ internal sealed class VignetteFeature
     {
         WorkflowGenerator.AddStep(g =>
         {
-            if (g.UserInput.TryGet(Strength, out float _))
+            if (!g.UserInput.TryGet(Strength, out float strength))
             {
-                ApplyPreset(g);
-                string vignetteNode = g.CreateNode(NodeName, new JObject
-                {
-                    ["image"] = g.CurrentMedia.Path,
-                    ["intensity"] = g.UserInput.Get(Strength),
-                    ["center_x"] = g.UserInput.Get(PositionX),
-                    ["center_y"] = g.UserInput.Get(PositionY),
-                });
-                g.CurrentMedia = g.CurrentMedia.WithPath([vignetteNode, 0]);
+                return;
             }
+
+            ApplyPreset(g);
+            string vignetteNode = g.CreateNode(NodeName, new JObject
+            {
+                ["image"] = g.CurrentMedia.Path,
+                ["intensity"] = strength,
+                ["center_x"] = g.UserInput.Get(PositionX),
+                ["center_y"] = g.UserInput.Get(PositionY),
+            });
+            g.CurrentMedia = g.CurrentMedia.WithPath([vignetteNode, 0]);
         }, stepPriorityCtr);
         stepPriorityCtr += 0.01f;
     }

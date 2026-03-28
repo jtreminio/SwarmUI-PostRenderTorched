@@ -117,20 +117,22 @@ internal sealed class RadialBlurFeature
     {
         WorkflowGenerator.AddStep(g =>
         {
-            if (g.UserInput.TryGet(Strength, out float _))
+            if (!g.UserInput.TryGet(Strength, out float strength))
             {
-                ApplyPreset(g);
-                string blurNode = g.CreateNode(NodeName, new JObject
-                {
-                    ["image"] = g.CurrentMedia.Path,
-                    ["blur_strength"] = g.UserInput.Get(Strength),
-                    ["center_x"] = g.UserInput.Get(PositionX),
-                    ["center_y"] = g.UserInput.Get(PositionY),
-                    ["focus_spread"] = g.UserInput.Get(FocusSpread),
-                    ["steps"] = g.UserInput.Get(Steps),
-                });
-                g.CurrentMedia = g.CurrentMedia.WithPath([blurNode, 0]);
+                return;
             }
+
+            ApplyPreset(g);
+            string blurNode = g.CreateNode(NodeName, new JObject
+            {
+                ["image"] = g.CurrentMedia.Path,
+                ["blur_strength"] = strength,
+                ["center_x"] = g.UserInput.Get(PositionX),
+                ["center_y"] = g.UserInput.Get(PositionY),
+                ["focus_spread"] = g.UserInput.Get(FocusSpread),
+                ["steps"] = g.UserInput.Get(Steps),
+            });
+            g.CurrentMedia = g.CurrentMedia.WithPath([blurNode, 0]);
         }, stepPriorityCtr);
         stepPriorityCtr += 0.01f;
     }

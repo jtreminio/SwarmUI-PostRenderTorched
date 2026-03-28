@@ -90,17 +90,19 @@ internal sealed class LutFeature
     {
         WorkflowGenerator.AddStep(g =>
         {
-            if (g.UserInput.TryGet(Name, out string lutName))
+            if (!g.UserInput.TryGet(Name, out string lutName))
             {
-                string lutNode = g.CreateNode(NodeName, new JObject
-                {
-                    ["image"] = g.CurrentMedia.Path,
-                    ["lut_name"] = lutName,
-                    ["log"] = g.UserInput.Get(LogSpace),
-                    ["strength"] = g.UserInput.Get(Strength),
-                });
-                g.CurrentMedia = g.CurrentMedia.WithPath([lutNode, 0]);
+                return;
             }
+
+            string lutNode = g.CreateNode(NodeName, new JObject
+            {
+                ["image"] = g.CurrentMedia.Path,
+                ["lut_name"] = lutName,
+                ["log"] = g.UserInput.Get(LogSpace),
+                ["strength"] = g.UserInput.Get(Strength),
+            });
+            g.CurrentMedia = g.CurrentMedia.WithPath([lutNode, 0]);
         }, stepPriorityCtr);
         stepPriorityCtr += 0.01f;
     }
