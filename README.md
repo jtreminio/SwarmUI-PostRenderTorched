@@ -2,7 +2,7 @@
 
 A [SwarmUI](https://github.com/mcmonkeyprojects/SwarmUI/) extension that adds parameters for [ProPost Torched](https://github.com/digitaljohn/comfyui-propost/).
 
-This version is a fork of [HellerCommaA/SwarmUI-PostRender](https://github.com/HellerCommaA/SwarmUI-PostRender), refactored to by Torch-driven instead of CPU-driven. Benchmarks show a nearly 100% reduction in generation time penalty - while not literally free, using this extension is the closest to "free" as anything in computers can get.
+This version is a fork of [HellerCommaA/SwarmUI-PostRender](https://github.com/HellerCommaA/SwarmUI-PostRender), refactored to be Torch-driven instead of CPU-driven. Benchmarks show a significant reduction in generation time penalty - while not literally free, using this extension is the closest to "free" as anything in computers can get.
 
 # Benefits over original [HellerCommaA/SwarmUI-PostRender](https://github.com/HellerCommaA/SwarmUI-PostRender)
 
